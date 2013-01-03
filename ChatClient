@@ -1,0 +1,113 @@
+import java.awt.*;
+import java.awt.event.*;
+import java.io.*;
+import java.net.*;
+
+@SuppressWarnings("serial")
+public class ChatClient extends Frame {
+
+  Socket s = null;
+	DataOutputStream dos = null;
+	DataInputStream dis = null;
+	boolean recvStart = false;
+	Thread tThread = new Thread(new RecvThread());
+
+	TextArea taContent = new TextArea();
+	TextField tfText = new TextField();
+
+	public static void main(String[] args) {
+		new ChatClient().launchFrame();
+	}
+
+	public void launchFrame() {
+		setBounds(900, 120, 300, 400);
+		add(taContent, BorderLayout.NORTH);
+		add(tfText, BorderLayout.SOUTH);
+		pack();
+		addWindowListener(new WindowAdapter() {
+
+			public void windowClosing(WindowEvent arg0) {
+				disconnect();
+				System.exit(0);
+			}
+		});
+		tfText.addActionListener(new TFListener());
+		this.setVisible(true);
+		connect();
+		tThread.start();
+	}
+
+	public void connect() {
+		try {
+			s = new Socket("localhost", 9876);
+			dos = new DataOutputStream(s.getOutputStream());
+			dis = new DataInputStream(s.getInputStream());
+			recvStart = true;
+			// System.out.println("Connected");
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void disconnect() {
+		try {
+			recvStart = false;
+			dos.close();
+			dis.close();
+			s.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		
+		}
+	}
+		/*
+		try {
+			recvStart = false;
+			tThread.join();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				dos.close();
+				dis.close();
+				s.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}*/
+	
+	private class TFListener implements ActionListener {
+
+		public void actionPerformed(ActionEvent e) {
+			String str = tfText.getText();
+			tfText.setText("");
+
+			try {
+				dos.writeUTF(str);
+				dos.flush();
+
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+		}
+	}
+
+	public class RecvThread implements Runnable {
+
+		public void run() {
+			while (recvStart) {
+				try {
+					String s = dis.readUTF();
+					taContent.setText(s + '\n');
+					// taContent.append(s + '\n');
+				} catch(SocketException e){
+					System.out.println("a client quit");
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+}
